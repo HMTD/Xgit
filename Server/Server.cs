@@ -56,20 +56,29 @@ namespace Server
                         string[] Command = (ListMessageBict[endPoint][i]).Split(',');
                         if (Command[0] == "New")
                         {
+                            Console.WriteLine($"{{{endPoint}}} 请求:{ListMessageBict[endPoint][i]}");
                             FileDataDict[endPoint].Add(Command[1], new List<byte[]>());
                             Console.WriteLine($"新文件；{Command[1]}");
                         }
                         else if (Command[0] == "Data")
                         {
-                            FileDataDict[endPoint][Command[1]].Add(Convert.FromBase64String(Command[2]));
-                            Console.WriteLine($"({Command[1]})数据，长度：{ Convert.FromBase64String(Command[2]).Length}");
+                            byte[] FileByte = Convert.FromBase64String(Command[2]);
+                            Console.WriteLine($"{{{endPoint.ToString()}}} 传输数据数据,所属文件:{Command[1]},长度:{FileByte.Length}");
+                            FileDataDict[endPoint][Command[1]].Add(FileByte);
                         }
                         else if (Command[0] == "NewObject")
                         {
+                            Console.WriteLine($"{{{endPoint.ToString()}}} 创建新传输:{Command[1]}");
                             if (Directory.Exists(Path + Command[1]))
+                            {
+                                Console.WriteLine($"报错：{Command[1]} 已经存在");
                                 socketServer.Send(endPoint, Encoding.UTF8.GetBytes("{" + Convert.ToBase64String(Encoding.UTF8.GetBytes("DirIsHave," + Command[1])) + "}"));
-                            FileDataDict.Add(endPoint, new Dictionary<string, List<byte[]>>());
-                            Console.WriteLine("新Object");
+                            }
+                            else
+                            {
+                                FileDataDict.Add(endPoint, new Dictionary<string, List<byte[]>>());
+                                Console.WriteLine($"新Object：{Command[1]}");
+                            }
                         }
                         else if (Command[0] == "End")
                         {
@@ -81,9 +90,18 @@ namespace Server
                                     for (int ib = 0; ib < FileDataDict[endPoint][Command[1]][ia].Length; ib++)
                                         buffer.Add(FileDataDict[endPoint][Command[1]][ia][ib]);
                                 File.WriteAllBytes(Path + Command[1], buffer.ToArray());
-                                socketServer.Send(endPoint, Encoding.UTF8.GetBytes($"{{{Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Command[1]},OK"))}}}"));
+                                socketServer.Send(endPoint, Encoding.UTF8.GetBytes($"{{{Convert.ToBase64String(Encoding.UTF8.GetBytes($"FileOK,{Command[1]}"))}}}"));
                                 Console.WriteLine($"文件保存完毕，位置：{Path + Command[1]}");
                             })); Save.Start();
+                        }
+                        else if (Command[0] == "Get")
+                        {
+                            Console.WriteLine($"{{{endPoint.ToString()}}}收到下载文件请求");
+                            Thread Send = new Thread(new ThreadStart(() =>
+                            {
+                                Dir dir = new Dir(Path + "\\git");
+                            }));
+                            Send.Start();
                         }
                     }
                 }
