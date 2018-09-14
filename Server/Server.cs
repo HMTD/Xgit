@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -40,7 +41,7 @@ namespace Server
                 {
                     ListMessageBict[endPoint].Add(Encoding.UTF8.GetString(Convert.FromBase64String(messages[i])));
                 }
-                if (messages.Last() != null && messages.Last() != "")
+                if (Regex.Matches(messageBufferDict[endPoint], "{").Count != Regex.Matches(messageBufferDict[endPoint], "}").Count)
                 {
                     ListMessageBict[endPoint].Add(Encoding.UTF8.GetString(Convert.FromBase64String(messages.Last()))); messageBufferDict[endPoint] = "";
                 }
@@ -100,10 +101,32 @@ namespace Server
                             Thread Send = new Thread(new ThreadStart(() =>
                             {
                                 Dir dir = new Dir(Path + "\\git");
+                                socketServer.Send(endPoint, Encoding.UTF8.GetBytes("{" + Convert.ToBase64String(Encoding.UTF8.GetBytes($"DirList,{dir.Dirs}")) + "}"));
+                                foreach (string Var in dir.FileList)
+                                {
+                                    byte[] ReadFile = File.ReadAllBytes(Var);
+                                    string base64 = Convert.ToBase64String(ReadFile);
+                                    string sendstring = "Data," + Var.Replace(Path + "\\git", "") + "," + base64;
+                                    string sendBase64 = "{" + Convert.ToBase64String(Encoding.UTF8.GetBytes(sendstring)) + "}";
+                                    socketServer.Send(endPoint, Encoding.UTF8.GetBytes("{" + Convert.ToBase64String(Encoding.UTF8.GetBytes($"New,{Var.Replace(Path + "\\git", "")}")) + "}"));
+                                    socketServer.Send(endPoint, Encoding.UTF8.GetBytes(sendBase64));
+                                    socketServer.Send(endPoint, Encoding.UTF8.GetBytes("{" + Convert.ToBase64String(Encoding.UTF8.GetBytes($"End,{Var.Replace(Path + "\\git", "")}")) + "}"));
+                                }
                             }));
                             Send.Start();
                         }
+                        else if (Command[0] == "Select")
+                        {
+                            string[] DirData = Directory.GetDirectories(Path);
+                            string DataString = "";
+                            foreach (string Var in DirData)
+                            {
+                                DataString += "{" + Var.Replace(Path, "") + "}";
+                            }
+                            socketServer.Send(endPoint, Encoding.UTF8.GetBytes("{" + Convert.ToBase64String(Encoding.UTF8.GetBytes(DataString)) + "}"));
+                        }
                     }
+                    ListMessageBict[endPoint].Remove(ListMessageBict[endPoint][i]);
                 }
             }
         }
